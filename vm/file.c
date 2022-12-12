@@ -40,7 +40,6 @@ file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
 	struct file_info *file_info = page->file.aux;
 	if (file_read_at(file_info->file, kva, file_info->read_bytes, file_info->ofs) != file_info->read_bytes){
-		printf("swap_in_false\n");
 		return false;
 	}
 	return true;
@@ -119,6 +118,7 @@ do_mmap (void *addr, size_t length, int writable,
 		aux_file->ofs = offset;
 		aux_file->read_bytes = page_read_bytes;
 		aux_file->zero_bytes = page_zero_bytes;
+		aux_file->open_addr = init_addr;
 		
 		if (!vm_alloc_page_with_initializer (VM_FILE, addr,
 					writable, lazy_load_segment, aux_file))
@@ -128,31 +128,47 @@ do_mmap (void *addr, size_t length, int writable,
 		offset += PGSIZE;
 		addr += PGSIZE;
 	}
-	curr->open_addr = init_addr;
+	void *page_init_addr = init_addr;
+	while (page_init_addr < addr - 1){
+		printf("page_init_addr %p\n", page_init_addr);
+		struct page *page = spt_find_page(spt, init_addr);
+		struct file_info *file_info = (struct file_info*)page->uninit.aux;
+		file_info->close_addr = addr;
+		page_init_addr += PGSIZE;
+	}
 	return init_addr;
 }
 
 /* Do the munmap */
 void
 do_munmap (void *addr) {
-	struct thread * curr = thread_current();
+	struct thread *curr = thread_current();
+	struct supplemetary_page_table *spt = &curr->spt;
 	bool is_dirty = pml4_is_dirty(curr->pml4, addr);
 	struct page *page = spt_find_page(&curr->spt, addr);
 	if (page == NULL) exit(-1);
 	struct file_info *file_info = page->file.aux;
 
 	if (page->not_present) return ;
-	if (addr != curr->open_addr)
+	if (addr < file_info->open_addr || file_info->close_addr < addr);
 		return ;
-	if (is_dirty){
-		// printf("%s\n", page->frame->kva);
-		// int checker = file_write(file_info->file, curr->open_addr, file_info->read_bytes);
-		if (page->is_writable){
-			file_write_at(file_info->file, addr, file_info->read_bytes, file_info->ofs);
-			pml4_set_dirty(curr->pml4, addr, 0);
+	addr = file_info->open_addr;
+	// while(addr < file_info->close_addr){
+		// printf("check munmap addr %p\n", addr);
+		if (is_dirty){
+			// printf("%s\n", page->frame->kva);
+			// int checker = file_write(file_info->file, curr->open_addr, file_info->read_bytes);
+			if (page->is_writable){
+				file_write_at(file_info->file, addr, file_info->read_bytes, file_info->ofs);
+				pml4_set_dirty(curr->pml4, addr, 0);
+			}
+			// memcpy(addr, page->frame->kva, file_info->read_bytes);
+			palloc_free_page(page->frame->kva);
 		}
-		// memcpy(addr, page->frame->kva, file_info->read_bytes);
-		palloc_free_page(page->frame->kva);
-	}
-	spt_remove_page(&curr->spt, page);
+		spt_remove_page(&curr->spt, page);
+		addr += PGSIZE;
+		page = spt_find_page(spt, addr);
+		file_info = page->file.aux;
+	// }
+	// file_close(file_info->file);
 }

@@ -562,14 +562,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	list_init(&(t->donations));
 	t->wait_on_lock = NULL;
-	t->stack_bottom = USER_STACK;
 
 	list_init(&t->child_list);
 	sema_init(&t->fork_sema,0);
 	sema_init(&t->wait_sema,0);
 	sema_init(&t->free_sema,0);
 	#ifdef	VM
-	t->open_addr = NULL;
+	t->stack_bottom = USER_STACK;
 	// t->swap_cnt = 0;
 	#endif
 	/* Advanced Scheduler */

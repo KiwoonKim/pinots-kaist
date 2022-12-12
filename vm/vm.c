@@ -173,9 +173,9 @@ vm_get_victim (void) {
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame (void) {
-	lock_acquire(&lock_vm);
+	// lock_acquire(&lock_vm);
 	struct frame *victim UNUSED = vm_get_victim ();
-	lock_release(&lock_vm);
+	// lock_release(&lock_vm);
 	// /* TODO: swap out the victim and return the evicted frame. */
 	if (victim){
 		list_init(&victim->page_list);
@@ -209,7 +209,9 @@ vm_get_frame(void)
 		frame->kva = new_kva;
 		list_init(&frame->page_list);
 	}
+	// lock_acquire(&lock_vm);
 	list_push_back(&frame_table, &frame->list_e);
+	// lock_release(&lock_vm);
 	frame->page = NULL;
 	frame->thread = thread_current();
 	/*
@@ -382,11 +384,10 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 	while (hash_next(&i)){
 		struct page *src_page = hash_entry (hash_cur(&i), struct page, hash_elem);
 		struct page *dst_page = (struct page *)malloc(sizeof(struct page));
-		
-		
 		// lock_acquire(&lock_copy);
 		memcpy(dst_page, src_page, sizeof(struct page));
 		// lock_release(&lock_copy);
+		// success &= vm_alloc_page_with_initializer(page_get_type(src_page), src_page->va, 1, src_page->uninit.init, src_page->uninit.aux);
 		if (src_page->frame){
 			// src_page->is_writable = false;
 			// dst_page->is_writable = false;
@@ -402,7 +403,6 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 				memcpy(file_info, src_page->uninit.aux, sizeof(struct file_info));
 				file_info->file = file_reopen(file_info->file);
 				lock_release(&lock_read);
-				thread_current()->open_addr = dst_page->va;
 				dst_page->uninit.aux = file_info;
 			}
 		}
