@@ -130,7 +130,6 @@ do_mmap (void *addr, size_t length, int writable,
 	}
 	void *page_init_addr = init_addr;
 	while (page_init_addr < addr - 1){
-		printf("page_init_addr %p\n", page_init_addr);
 		struct page *page = spt_find_page(spt, init_addr);
 		struct file_info *file_info = (struct file_info*)page->uninit.aux;
 		file_info->close_addr = addr;
@@ -153,7 +152,7 @@ do_munmap (void *addr) {
 	if (addr < file_info->open_addr || file_info->close_addr < addr);
 		return ;
 	addr = file_info->open_addr;
-	// while(addr < file_info->close_addr){
+	while(addr < file_info->close_addr){
 		// printf("check munmap addr %p\n", addr);
 		if (is_dirty){
 			// printf("%s\n", page->frame->kva);
@@ -169,6 +168,6 @@ do_munmap (void *addr) {
 		addr += PGSIZE;
 		page = spt_find_page(spt, addr);
 		file_info = page->file.aux;
-	// }
-	// file_close(file_info->file);
+	}
+	file_close(file_info->file);
 }
