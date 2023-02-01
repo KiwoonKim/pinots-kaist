@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "threads/interrupt.h"
 #include "threads/synch.h"
+// #include "lib/kernel/bitmap.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -31,7 +32,7 @@ typedef int tid_t;
 
 /* System Call */
 #define FDT_PAGES 3 //To Do : 추후 수정 시도
-#define FDCOUNT_LIMIT FDT_PAGES *(1<<9) // limit fdidx
+#define FDCOUNT_LIMIT FDT_PAGES * (1<<8) // limit fdidx
 
 /* System Call */
 #define STDIN 1
@@ -142,11 +143,16 @@ struct thread {
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
+	void * stack_bottom;
+	void * user_rsp;
+	void * open_addr;
+	// int open_file_cnt;
+	// unsigned int swap_cnt;
+	// struct bitmap *swap_table;
 #endif
-
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
-	unsigned magic;                     /* Detects stack overflow. */
+	unsigned magic;           /* Detects stack overflow. */
 };
 
 /* If false (default), use round-robin scheduler.
